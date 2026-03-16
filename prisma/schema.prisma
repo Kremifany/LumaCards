@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Subject {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  topics    Topic[]
+}
+
+model Topic {
+  id        String         @id @default(cuid())
+  slug      String
+  name      String
+  order     Int
+  subjectId String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  cards     Card[]
+  progress  TopicProgress[]
+
+  @@unique([subjectId, slug])
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  order     Int
+  topicId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}
+
+model TopicProgress {
+  id             String   @id @default(cuid())
+  userKey        String
+  topicId        String
+  completedCards Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  topic          Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userKey, topicId])
+  @@index([userKey])
+}
