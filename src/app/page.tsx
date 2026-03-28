@@ -36,6 +36,7 @@ type DeleteModalState = {
 const APP_NAME = "LumaCards";
 const MAX_CARDS_PER_TOPIC = 100;
 const THEME_STORAGE_KEY = "lumacards-theme";
+const SOLVED_CARDS_STORAGE_KEY_PREFIX = "lumacards-solved-cards";
 type ThemeMode = "light" | "dark";
 
 function clampProgress(value: number, max: number) {
@@ -52,10 +53,44 @@ function getOrCreateUserKey() {
   return next;
 }
 
+function getSolvedCardsStorageKey(userKey: string) {
+  return `${SOLVED_CARDS_STORAGE_KEY_PREFIX}:${userKey}`;
+}
+
+function parseSolvedCards(raw: string | null): Record<string, string[]> {
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+
+    const normalized: Record<string, string[]> = {};
+    for (const [topicId, solved] of Object.entries(parsed as Record<string, unknown>)) {
+      if (Array.isArray(solved)) {
+        normalized[topicId] = solved.filter((item): item is string => typeof item === "string");
+      }
+    }
+    return normalized;
+  } catch {
+    return {};
+  }
+}
+
 function getInitialTheme(): ThemeMode {
   const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (saved === "light" || saved === "dark") return saved;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function getSolvedCountForTopic(topic: Topic | undefined, solvedCardsByTopic: Record<string, string[]>) {
+  if (!topic) return 0;
+  const validCardIds = new Set(topic.cards.map((card) => card.id));
+  const solved = new Set(solvedCardsByTopic[topic.id] ?? []);
+  let count = 0;
+  for (const cardId of solved) {
+    if (validCardIds.has(cardId)) count += 1;
+  }
+  return clampProgress(count, topic.cards.length);
 }
 
 export default function Home() {
@@ -70,6 +105,7 @@ export default function Home() {
   const [theme, setTheme] = useState<ThemeMode>("light");
 
   const [topicProgress, setTopicProgress] = useState<Record<string, number>>({});
+  const [solvedCardsByTopic, setSolvedCardsByTopic] = useState<Record<string, string[]>>({});
   const [addCardSubjectId, setAddCardSubjectId] = useState("");
   const [addCardTopicId, setAddCardTopicId] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
@@ -102,6 +138,9 @@ export default function Home() {
   useEffect(() => {
     const nextUserKey = getOrCreateUserKey();
     setUserKey(nextUserKey);
+    setSolvedCardsByTopic(
+      parseSolvedCards(window.localStorage.getItem(getSolvedCardsStorageKey(nextUserKey)))
+    );
 
     async function loadData() {
       try {
@@ -139,6 +178,14 @@ export default function Home() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (!userKey) return;
+    window.localStorage.setItem(
+      getSolvedCardsStorageKey(userKey),
+      JSON.stringify(solvedCardsByTopic)
+    );
+  }, [userKey, solvedCardsByTopic]);
+
   const selectedSubject = useMemo(
     () => subjects.find((subject) => subject.id === selectedSubjectId),
     [subjects, selectedSubjectId]
@@ -167,12 +214,16 @@ export default function Home() {
   }, [subjects, selectedSubjectId, selectedTopicId, selectedSubject]);
 
   const completedCards = selectedTopic
-    ? clampProgress(topicProgress[selectedTopic.id] ?? 0, selectedTopic.cards.length)
+    ? getSolvedCountForTopic(selectedTopic, solvedCardsByTopic)
     : 0;
   const totalCards = selectedTopic?.cards.length ?? 0;
   const progressPercent = totalCards === 0 ? 0 : (completedCards / totalCards) * 100;
   const isTopicComplete = completedCards >= totalCards;
   const currentCard = selectedTopic?.cards[currentCardIndex];
+  const currentCardSolved =
+    !!selectedTopic &&
+    !!currentCard &&
+    (solvedCardsByTopic[selectedTopic.id] ?? []).includes(currentCard.id);
   const hasPreviousCard = currentCardIndex > 0;
   const hasNextCard = selectedTopic ? currentCardIndex < selectedTopic.cards.length - 1 : false;
 
@@ -209,7 +260,7 @@ export default function Home() {
     const topic = subjects
       .find((subject) => subject.id === subjectId)
       ?.topics.find((item) => item.id === topicId);
-    const completed = clampProgress(topicProgress[topicId] ?? 0, topic?.cards.length ?? 0);
+    const completed = getSolvedCountForTopic(topic, solvedCardsByTopic);
     const nextIndex =
       topic && topic.cards.length > 0 ? clampProgress(completed, topic.cards.length - 1) : 0;
 
@@ -220,16 +271,29 @@ export default function Home() {
   };
 
   const completeCurrentCard = () => {
-    if (!selectedTopic) return;
+    if (!selectedTopic || !currentCard || currentCardSolved) return;
 
-    setTopicProgress((prev) => {
-      const completionTarget = currentCardIndex + 1;
-      const nextValue = clampProgress(
-        Math.max(prev[selectedTopic.id] ?? 0, completionTarget),
-        totalCards
+    setSolvedCardsByTopic((prev) => {
+      const existingSolved = new Set(prev[selectedTopic.id] ?? []);
+      if (existingSolved.has(currentCard.id)) {
+        return prev;
+      }
+
+      existingSolved.add(currentCard.id);
+      const nextSolvedForTopic = [...existingSolved];
+      const nextValue = getSolvedCountForTopic(
+        {
+          ...selectedTopic,
+          cards: selectedTopic.cards,
+        },
+        { ...prev, [selectedTopic.id]: nextSolvedForTopic }
       );
+      setTopicProgress((prevProgress) => ({ ...prevProgress, [selectedTopic.id]: nextValue }));
       void saveTopicProgress(selectedTopic.id, nextValue);
-      return { ...prev, [selectedTopic.id]: nextValue };
+      return {
+        ...prev,
+        [selectedTopic.id]: nextSolvedForTopic,
+      };
     });
     setCurrentCardIndex((prev) => Math.min(prev + 1, Math.max(totalCards - 1, 0)));
     setShowAnswer(false);
@@ -248,6 +312,11 @@ export default function Home() {
   const resetTopic = (topicId: string) => {
     void saveTopicProgress(topicId, 0);
     setTopicProgress((prev) => ({ ...prev, [topicId]: 0 }));
+    setSolvedCardsByTopic((prev) => {
+      const next = { ...prev };
+      delete next[topicId];
+      return next;
+    });
     if (selectedTopicId === topicId) {
       setCurrentCardIndex(0);
       setShowAnswer(false);
@@ -266,6 +335,13 @@ export default function Home() {
       });
       return next;
     });
+    setSolvedCardsByTopic((prev) => {
+      const next = { ...prev };
+      subject.topics.forEach((topic) => {
+        delete next[topic.id];
+      });
+      return next;
+    });
     if (subjectId === selectedSubjectId) {
       setCurrentCardIndex(0);
       setShowAnswer(false);
@@ -274,13 +350,11 @@ export default function Home() {
 
   const subjectIsComplete = (subject: Subject) =>
     subject.topics.every(
-      (topic) =>
-        clampProgress(topicProgress[topic.id] ?? 0, topic.cards.length) >=
-        topic.cards.length
+      (topic) => getSolvedCountForTopic(topic, solvedCardsByTopic) >= topic.cards.length
     );
 
   const topicIsComplete = (topic: Topic) =>
-    clampProgress(topicProgress[topic.id] ?? 0, topic.cards.length) >= topic.cards.length;
+    getSolvedCountForTopic(topic, solvedCardsByTopic) >= topic.cards.length;
 
   const addCardSubject = useMemo(
     () => subjects.find((subject) => subject.id === addCardSubjectId),
@@ -638,13 +712,6 @@ export default function Home() {
                 {APP_NAME}
               </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-              className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-900 dark:text-indigo-200 dark:hover:bg-slate-800"
-            >
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
-            </button>
           </div>
           <div className="w-full max-w-sm">
             <div className="mb-1 flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -730,10 +797,7 @@ export default function Home() {
                     {subject.topics.map((topic) => {
                       const isSelectedTopic = topic.id === selectedTopicId;
                       const completed = topicIsComplete(topic);
-                      const done = clampProgress(
-                        topicProgress[topic.id] ?? 0,
-                        topic.cards.length
-                      );
+                      const done = getSolvedCountForTopic(topic, solvedCardsByTopic);
 
                       return (
                         <div
@@ -785,9 +849,8 @@ export default function Home() {
                             </button>
                             <button
                               type="button"
-                              disabled={!completed}
                               onClick={() => resetTopic(topic.id)}
-                              className="rounded-md border border-cyan-200 px-2 py-1 text-[11px] font-medium text-cyan-700 enabled:hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-cyan-400/40 dark:text-cyan-200 dark:enabled:hover:bg-slate-700"
+                              className="rounded-md border border-cyan-200 px-2 py-1 text-[11px] font-medium text-cyan-700 hover:bg-cyan-50 dark:border-cyan-400/40 dark:text-cyan-200 dark:hover:bg-slate-700"
                             >
                               Start Over
                             </button>
@@ -882,7 +945,7 @@ export default function Home() {
 
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <span className="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:border-indigo-400/40 dark:bg-slate-800 dark:text-indigo-200">
-                      Card {currentCardIndex + 1}/{totalCards}
+                      Solved {completedCards}/{totalCards}
                     </span>
                     <button
                       type="button"
@@ -917,9 +980,10 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={completeCurrentCard}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700"
+                        disabled={currentCardSolved}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        I Got It
+                        {currentCardSolved ? "Already Solved" : "I Got It"}
                       </button>
                     )}
                   </div>
@@ -1120,6 +1184,49 @@ export default function Home() {
           )}
         </section>
       </main>
+
+      <button
+        type="button"
+        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+        className="fixed right-5 bottom-5 z-40 rounded-full border border-indigo-300 bg-white p-3 text-indigo-700 shadow-lg hover:bg-indigo-50 dark:border-indigo-500/60 dark:bg-slate-900 dark:text-indigo-200 dark:hover:bg-slate-800"
+      >
+        {theme === "dark" ? (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2" />
+            <path d="M12 20v2" />
+            <path d="m4.93 4.93 1.41 1.41" />
+            <path d="m17.66 17.66 1.41 1.41" />
+            <path d="M2 12h2" />
+            <path d="M20 12h2" />
+            <path d="m6.34 17.66-1.41 1.41" />
+            <path d="m19.07 4.93-1.41 1.41" />
+          </svg>
+        ) : (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3c0 5 3.99 9 8.99 9 .27 0 .53-.01.8-.04" />
+          </svg>
+        )}
+      </button>
 
       {editModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
