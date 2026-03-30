@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const MAX_CARDS_PER_TOPIC = 100;
 
-const studyDataSubjectArgs = Prisma.validator<Prisma.SubjectFindManyArgs>()({
-  orderBy: { name: "asc" },
-  include: {
-    topics: {
-      orderBy: { order: "asc" },
-      include: {
-        cards: {
-          orderBy: { order: "asc" },
-        },
-      },
-    },
-  },
-});
+type StudyDataCard = {
+  id: string;
+  question: string;
+  answer: string;
+};
 
-type StudyDataSubject = Prisma.SubjectGetPayload<typeof studyDataSubjectArgs>;
+type StudyDataTopic = {
+  id: string;
+  name: string;
+  cards: StudyDataCard[];
+};
+
+type StudyDataSubject = {
+  id: string;
+  name: string;
+  topics: StudyDataTopic[];
+};
 
 export async function GET(request: NextRequest) {
   const userKey = request.nextUrl.searchParams.get("userKey");
@@ -28,7 +29,19 @@ export async function GET(request: NextRequest) {
   }
 
   const [subjects, progressRows] = await Promise.all([
-    prisma.subject.findMany(studyDataSubjectArgs),
+    prisma.subject.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        topics: {
+          orderBy: { order: "asc" },
+          include: {
+            cards: {
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+      },
+    }),
     prisma.topicProgress.findMany({
       where: { userKey },
       select: { topicId: true, completedCards: true },
@@ -40,7 +53,8 @@ export async function GET(request: NextRequest) {
     progress[row.topicId] = row.completedCards;
   }
 
-  const normalizedSubjects = (subjects as StudyDataSubject[]).map((subject) => ({
+  const normalizedSubjects = (subjects as unknown as StudyDataSubject[]).map(
+    (subject) => ({
     id: subject.id,
     name: subject.name,
     topics: subject.topics.map((topic) => ({
@@ -52,7 +66,8 @@ export async function GET(request: NextRequest) {
         answer: card.answer,
       })),
     })),
-  }));
+  })
+  );
 
   return NextResponse.json({ subjects: normalizedSubjects, progress });
 }
