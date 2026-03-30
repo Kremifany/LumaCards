@@ -2,8 +2,12 @@ import prismaPackage from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const { PrismaClient } = prismaPackage;
-type PrismaClientInstance = InstanceType<typeof PrismaClient>;
+// Vercel's TypeScript resolver may type `@prisma/client` as `@prisma/client/default`
+// which doesn't expose `PrismaClient` as a typed export. Use a safe cast.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PrismaClient = (prismaPackage as any).PrismaClient as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PrismaClientInstance = any;
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClientInstance;
