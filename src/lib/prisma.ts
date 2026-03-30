@@ -14,11 +14,21 @@ const globalForPrisma = globalThis as unknown as {
   prismaPool?: Pool;
 };
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set.");
+function normalizeDatabaseUrl(raw: string | undefined): string {
+  if (!raw) {
+    throw new Error("DATABASE_URL is not set.");
+  }
+  let url = raw.trim();
+  if (
+    (url.startsWith('"') && url.endsWith('"')) ||
+    (url.startsWith("'") && url.endsWith("'"))
+  ) {
+    url = url.slice(1, -1).trim();
+  }
+  return url;
 }
+
+const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
 
 function resolvePgConnectionString(url: string) {
   if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
@@ -40,7 +50,11 @@ function resolvePgConnectionString(url: string) {
     return payload.databaseUrl;
   }
 
-  throw new Error("Unsupported DATABASE_URL format.");
+  throw new Error(
+    "Unsupported DATABASE_URL format. Use a full Neon/Postgres URL starting with postgresql:// " +
+      "(copy it from Neon: Dashboard → your project → Connect → Connection string). " +
+      "Do not paste only the host name."
+  );
 }
 
 const pgConnectionString = resolvePgConnectionString(connectionString);
