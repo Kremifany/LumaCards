@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.mjs",
     "populate:organic-chem-1": "node scripts/populate-organic-chem-1.mjs",
+    "populate:pre-pa-biomolecules": "node scripts/populate-pre-pa-biomolecules.mjs",
     "docker:up": "docker compose up -d --build",
     "docker:db:up": "docker compose up -d db",
     "docker:app:up": "docker compose up -d --build app",
