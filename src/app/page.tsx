@@ -34,7 +34,7 @@ type DeleteModalState = {
 };
 
 const APP_NAME = "LumaCards";
-const MAX_CARDS_PER_TOPIC = 100;
+const MAX_CARDS_PER_TOPIC = 300;
 const THEME_STORAGE_KEY = "lumacards-theme";
 const SOLVED_CARDS_STORAGE_KEY_PREFIX = "lumacards-solved-cards";
 type ThemeMode = "light" | "dark";
