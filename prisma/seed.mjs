@@ -43,7 +43,7 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
-const MAX_CARDS_PER_TOPIC = 100;
+const MAX_CARDS_PER_TOPIC = 300;
 
 const data = [
   {
