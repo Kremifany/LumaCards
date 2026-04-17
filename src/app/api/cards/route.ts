@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const MAX_CARDS_PER_TOPIC = 100;
+const MAX_CARDS_PER_TOPIC = 300;
 
 type CreateCardBody = {
   topicId: string;
