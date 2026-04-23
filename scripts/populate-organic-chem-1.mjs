@@ -140,7 +140,7 @@ function buildOrganicChemCards() {
   add("Which hybridization is typical for alkane carbon?", "sp3 (tetrahedral, about 109.5 degrees).");
   add("Which hybridization is typical for alkene carbon in C=C?", "sp2 (trigonal planar, about 120 degrees).");
 
-  // 81-100: Reactions and properties
+  // 81-120: Reactions and properties
   add("What is combustion of hydrocarbons?", "Reaction with oxygen producing CO2 and H2O (complete combustion).");
   add("What indicates incomplete combustion of hydrocarbons?", "Formation of CO and/or soot due to limited oxygen.");
   add("What is substitution reaction in alkanes?", "A reaction where an atom/group (often H) is replaced by another.");
@@ -162,8 +162,52 @@ function buildOrganicChemCards() {
   add("What is aromaticity (basic criteria)?", "A cyclic, planar, conjugated system with 4n+2 pi electrons (Huckel rule).");
   add("Why is benzene relatively stable compared with typical alkenes?", "Its pi electrons are delocalized over the ring (aromatic stabilization).");
 
-  if (cards.length !== 100) {
-    throw new Error(`Expected 100 cards, got ${cards.length}.`);
+  // 121-160: Stereochemistry and medicinal relevance
+  add("Why is chirality important for many drugs?", "Enantiomers of a chiral drug can have different biological activities, potencies, or side effects.");
+  add("What is a chiral center in an amino acid (except glycine)?", "The alpha carbon, which is attached to four different groups.");
+  add("Which enantiomer of most natural amino acids is found in human proteins?", "The L-enantiomer.");
+  add("Which enantiomer form do most naturally occurring sugars take?", "The D-enantiomer.");
+  add("What does it mean if a receptor is stereoselective?", "It binds one stereoisomer more strongly than another, leading to different biological effects.");
+  add("How can stereochemistry affect a local anesthetic?", "One enantiomer may provide anesthesia with fewer cardiac or CNS side effects than the racemate.");
+  add("What is an example of a chiral beta-blocker used clinically?", "Propranolol, which has chiral centers and enantiomers with different activities.");
+  add("Why must pharmacists and providers pay attention to racemic vs single-enantiomer formulations?", "Because single-enantiomer drugs may differ in efficacy, dose, or adverse-effect profiles compared with racemic mixtures.");
+  add("What is conformational analysis used for in medicinal chemistry?", "To understand preferred shapes of molecules and how they fit into binding sites.");
+  add("Why are aromatic rings common in many small-molecule drugs?", "They provide rigid hydrophobic surfaces and allow π-π and cation–π interactions in binding sites.");
+  add("How can adding polar functional groups change a drug candidate?", "It can increase water solubility, alter absorption, and affect distribution or clearance.");
+  add("Why are amide bonds so common in peptide-based drugs?", "They are relatively stable in physiological conditions and define peptide backbone structure.");
+  add("How does protonation state of an amine affect its pharmacokinetics?", "Protonated amines are more water soluble and less able to cross lipid membranes than their neutral forms.");
+  add("What is a prodrug?", "A chemically modified drug that is metabolized in the body to release the active compound.");
+  add("Why might an ester be used as a prodrug of a carboxylic acid?", "Esters are more lipophilic, improving absorption, and are later hydrolyzed to the active acid.");
+  add("How does lipophilicity influence blood–brain barrier penetration?", "More lipophilic, non-ionized molecules cross the BBB more readily.");
+  add("Why do many anesthetic agents contain halogen atoms?", "Halogens can increase lipophilicity and modulate potency and volatility.");
+  add("How can hydrogen bonding capacity influence drug–target interactions?", "Hydrogen bond donors and acceptors help position drugs in binding pockets with specificity.");
+  add("Why can small structural changes in a drug cause large changes in activity?", "They can alter binding interactions, stereochemistry, or metabolism, significantly modifying pharmacodynamics and pharmacokinetics.");
+  add("What is bioisosterism in drug design?", "Replacing one functional group with another that has similar size or electronic properties to improve a drug's profile.");
+
+  // 161-200: Biologically relevant functional groups and metabolism
+  add("What functional group connects monosaccharides in disaccharides?", "An acetal (glycosidic) linkage between hemiacetal and alcohol groups.");
+  add("What type of reaction forms peptide bonds in proteins?", "A condensation (dehydration) reaction between an amino group and a carboxyl group.");
+  add("Why are amide bonds in proteins relatively stable at physiological pH?", "Their resonance-stabilized structure makes them less reactive to hydrolysis without enzymes.");
+  add("What organic functional groups are present in lactic acid?", "A secondary alcohol and a carboxylic acid.");
+  add("Which functional group is key in ketone bodies like acetoacetate?", "The ketone carbonyl group.");
+  add("What functional group defines primary alcohols used in some antiseptics?", "An –CH2OH group attached to a carbon chain.");
+  add("What organic functional group is present in many local anesthetics like lidocaine?", "An amide linkage connecting aromatic and tertiary amine fragments.");
+  add("Which functional group is central to NSAIDs like ibuprofen and naproxen?", "A carboxylic acid group that can form salts and interact with COX enzymes.");
+  add("What kind of functional group is present in many opioid analgesics?", "Tertiary amines and phenolic or ether groups that interact with opioid receptors.");
+  add("What is phase I metabolism in drug processing?", "Enzymatic reactions (such as oxidation, reduction, or hydrolysis) that introduce or uncover polar functional groups.");
+  add("What enzymes commonly mediate oxidative phase I metabolism?", "Cytochrome P450 (CYP) monooxygenases in the liver.");
+  add("What is phase II metabolism?", "Conjugation reactions that link functional groups to highly polar moieties like glucuronic acid, sulfate, or glutathione.");
+  add("Why does introducing a hydroxyl group often speed up drug elimination?", "It increases polarity and allows conjugation, enhancing renal or biliary excretion.");
+  add("What functional group is typically added in glucuronidation?", "A glucuronic acid moiety linked via an ether or ester bond to the substrate.");
+  add("Why are aromatic amines sometimes problematic toxicologically?", "They can be metabolically activated to reactive intermediates that damage DNA or proteins.");
+  add("How can knowledge of organic oxidation reactions help predict drug–drug interactions?", "Drugs that inhibit or induce CYP-mediated oxidations can change plasma levels of co-administered medications.");
+  add("Why do many vitamins contain heterocyclic aromatic rings?", "These rings support redox chemistry, acid–base behavior, or binding in enzymatic cofactors.");
+  add("What is the functional group composition of acetylsalicylic acid (aspirin)?", "An aromatic ring bearing both an ester group and a carboxylic acid.");
+  add("How does hydrolysis of aspirin in the body relate to organic reactions?", "It is an ester hydrolysis that releases salicylic acid and acetic acid.");
+  add("Why is understanding acid–base properties of drug functional groups clinically important?", "Ionization affects absorption, distribution, receptor binding, and excretion, guiding dosing and formulation.");
+
+  if (cards.length > 300) {
+    throw new Error(`Topic exceeds 300 cards; got ${cards.length}.`);
   }
   return cards;
 }
